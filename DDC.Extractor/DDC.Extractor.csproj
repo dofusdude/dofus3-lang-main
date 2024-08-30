@@ -1,0 +1,56 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>latest</LangVersion>
+        <RestoreAdditionalProjectSources>
+            https://api.nuget.org/v3/index.json;
+            https://nuget.bepinex.dev/v3/index.json;
+            https://nuget.samboy.dev/v3/index.json
+        </RestoreAdditionalProjectSources>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="BepInEx.Unity.IL2CPP" Version="6.0.0-be.*" IncludeAssets="compile"/>
+        <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*"/>
+    </ItemGroup>
+    
+    <ItemGroup>
+        <Reference Include="UnityEngine">
+            <HintPath>..\Interop\UnityEngine.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.CoreModule">
+            <HintPath>..\Interop\UnityEngine.CoreModule.dll</HintPath>
+        </Reference>
+        <Reference Include="Unity.ResourceManager">
+            <HintPath>..\Interop\Unity.ResourceManager.dll</HintPath>
+        </Reference>
+        <Reference Include="Unitask">
+            <HintPath>..\Interop\Unitask.dll</HintPath>
+        </Reference>
+        <Reference Include="Ankama.AddressableUtility.Runtime">
+            <HintPath>..\Interop\Ankama.AddressableUtility.Runtime.dll</HintPath>
+        </Reference>
+        <Reference Include="Core">
+            <HintPath>..\Interop\Core.dll</HintPath>
+        </Reference>
+        <Reference Include="Core.Localization">
+            <HintPath>..\Interop\Core.Localization.dll</HintPath>
+        </Reference>
+        <Reference Include="Ankama.Dofus.Core.DataCenter">
+            <HintPath>..\Interop\Ankama.Dofus.Core.DataCenter.dll</HintPath>
+        </Reference>
+        <Reference Include="Ankama.Dofus.Core.DataCenter">
+            <HintPath>..\Interop\Ankama.Dofus.Core.DataCenter.dll</HintPath>
+        </Reference>
+        <Reference Include="Il2Cppmscorlib">
+            <HintPath>..\Interop\Il2Cppmscorlib.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+    
+    <ItemGroup>
+      <ProjectReference Include="..\DDC\DDC.csproj" />
+    </ItemGroup>
+    
+</Project>
