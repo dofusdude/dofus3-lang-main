@@ -4,6 +4,8 @@
 name: Extract game data
 
 on:
+  release:
+    types: [published]
   workflow_call:
   workflow_dispatch:
 
@@ -35,7 +37,7 @@ jobs:
         id: read_dofus_version
         run: |
           $CytrusGameVersion=$(cytrus-v6 version -g dofus -b)
-          $GameVersion=$CytrusGameVersion.Split(`"_`")[1]
+          $GameVersion=$CytrusGameVersion.Split("_")[1]
           echo "dofus_version=$GameVersion" >> $Env:GITHUB_OUTPUT
           echo "dofus_path=dofus-beta-$GameVersion" >> $Env:GITHUB_OUTPUT
 
@@ -54,10 +56,10 @@ jobs:
         run: curl https://builds.bepinex.dev/projects/bepinex_be/697/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.697%2B5362580.zip -o BepInEx.zip
 
       - name: Extract BepInEx
-        run: 7z x BepInEx.zip -o${{ steps.read_dofus_version.outputs.dofus_path }} -aoa
+        run: 7z x BepInEx.zip -o"${{ steps.read_dofus_version.outputs.dofus_path }}" -aoa
 
       - name: Run game once
-        run: node scripts/bepinex-first-run ${{ steps.read_dofus_version.outputs.dofus_path }}\Dofus.exe
+        run: node scripts/bepinex-run-until "${{ steps.read_dofus_version.outputs.dofus_path }}\Dofus.exe" "Chainloader startup complete"
         timeout-minutes: 10
 
       - name: Read game build id
@@ -84,16 +86,19 @@ jobs:
       - name: Copy plugin
         run: copy DDC.Extractor/bin/Release/net6.0/DDC*.dll ${{ steps.read_dofus_version.outputs.dofus_path }}/BepInEx/plugins
 
+      - name: Create BepInEx config folder
+        run: md ${{ steps.read_dofus_version.outputs.dofus_path }}/BepInEx/config -Force
+
       - name: Write DDC.Extractor configuration
         run: |
           $Configuration = @'
           [General]
           OutputDirectory = ./extracted-data
           '@
-          echo "$Configuration" > ${{ steps.read_dofus_version.outputs.dofus_path }}/BepInEx/config
+          echo "$Configuration" > ${{ steps.read_dofus_version.outputs.dofus_path }}/BepInEx/config/DDC.Extractor.cfg
 
       - name: Extract data
-        run: cd ${{ steps.read_dofus_version.outputs.dofus_path }}; ./Dofus.exe
+        run: cd ${{ steps.read_dofus_version.outputs.dofus_path }}; node ../scripts/bepinex-run-until "Dofus.exe" "DDC data extraction complete."
 
       - name: Create metadata file
         run: |
@@ -107,15 +112,26 @@ jobs:
           $null = $MetadataJson | Out-File -FilePath "${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/metadata.json"
 
       - name: Create release archive
+        if: ${{ github.event_name == 'release' }}
         run: |
           cd ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data
           7z a data.zip .
 
+      - name: Upload compiled libraries to release
+        if: ${{ github.event_name == 'release' }}
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/data.zip
+          asset_name: data.zip
+          tag: ${{ github.ref }}
+
       - name: Upload compiled library to artifacts
+        if: ${{ github.event_name != 'release' }}
         uses: actions/upload-artifact@v4
         with:
-          name: data.zip
-          path: ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/data.zip
+          name: data
+          path: ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data
           if-no-files-found: 'error'
 
 permissions:
