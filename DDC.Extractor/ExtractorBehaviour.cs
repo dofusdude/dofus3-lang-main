@@ -30,11 +30,11 @@ public class ExtractorBehaviour : MonoBehaviour
 
         Extractor.Logger.LogInfo("Start extracting data...");
 
-        yield return WaitForCompletion(ExtractData("point-of-interest.json", DataCenterModule.GetDataRoot<PointOfInterestRoot>(), new PointsOfInterestConverter()));
-        yield return WaitForCompletion(ExtractData("map-positions.json", DataCenterModule.GetDataRoot<MapPositionsRoot>(), new MapPositionsConverter()));
-        yield return WaitForCompletion(ExtractData("areas.json", DataCenterModule.GetDataRoot<AreasRoot>(), new AreasConverter()));
-        yield return WaitForCompletion(ExtractData("super-areas.json", DataCenterModule.GetDataRoot<SuperAreasRoot>(), new SuperAreasConverter()));
-        yield return WaitForCompletion(ExtractData("sub-areas.json", DataCenterModule.GetDataRoot<SubAreasRoot>(), new SubAreasConverter()));
+        yield return WaitForCompletion(ExtractDataFromGame("point-of-interest.json", DataCenterModule.GetDataRoot<PointOfInterestRoot>(), new PointsOfInterestConverter()));
+        yield return WaitForCompletion(ExtractDataFromGame("map-positions.json", DataCenterModule.GetDataRoot<MapPositionsRoot>(), new MapPositionsConverter()));
+        yield return WaitForCompletion(ExtractDataFromGame("areas.json", DataCenterModule.GetDataRoot<AreasRoot>(), new AreasConverter()));
+        yield return WaitForCompletion(ExtractDataFromGame("super-areas.json", DataCenterModule.GetDataRoot<SuperAreasRoot>(), new SuperAreasConverter()));
+        yield return WaitForCompletion(ExtractDataFromGame("sub-areas.json", DataCenterModule.GetDataRoot<SubAreasRoot>(), new SubAreasConverter()));
         yield return WaitForCompletion(ExtractLocale("de.i18n.json", "Dofus_Data/StreamingAssets/Content/I18n/de.bin"));
         yield return WaitForCompletion(ExtractLocale("en.i18n.json", "Dofus_Data/StreamingAssets/Content/I18n/en.bin"));
         yield return WaitForCompletion(ExtractLocale("es.i18n.json", "Dofus_Data/StreamingAssets/Content/I18n/es.bin"));
@@ -65,14 +65,14 @@ public class ExtractorBehaviour : MonoBehaviour
         I18N.Models.LocalizationTable localizationTable = new() { LanguageCode = table.m_header.languageCode, Entries = entries };
 
         string path = Path.Join(Extractor.OutputDirectory, filename);
-        await using FileStream stream = File.OpenWrite(path);
+        await using FileStream stream = File.Open(path, FileMode.Create);
         await JsonSerializer.SerializeAsync(stream, localizationTable, JsonSerializerOptions);
         stream.Flush();
 
         Extractor.Logger.LogInfo($"Extracted locale {table.m_header.languageCode} to {path}.");
     }
 
-    static async Task ExtractData<TData, TSerializedData>(string filename, MetadataRoot<TData> root, IConverter<TData, TSerializedData> converter)
+    static async Task ExtractDataFromGame<TData, TSerializedData>(string filename, MetadataRoot<TData> root, IConverter<TData, TSerializedData> converter)
     {
         string dataTypeName = typeof(TData).Name;
         string path = Path.Join(Extractor.OutputDirectory, filename);
@@ -82,7 +82,7 @@ public class ExtractorBehaviour : MonoBehaviour
         Il2CppSystem.Collections.Generic.List<TData> data = root.GetObjects();
         TSerializedData[] arr = data._items.Take(data.Count).Select(converter.Convert).ToArray();
 
-        await using FileStream stream = File.OpenWrite(path);
+        await using FileStream stream = File.Open(path, FileMode.Create);
         await JsonSerializer.SerializeAsync(stream, arr, JsonSerializerOptions);
         stream.Flush();
 
