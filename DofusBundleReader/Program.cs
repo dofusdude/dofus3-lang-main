@@ -4,15 +4,16 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using CommandLine;
 using DofusBundleReader.Abstractions;
+using DofusBundleReader.Maps;
 using DofusBundleReader.WorldGraphs;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Serilog;
 using Serilog.Events;
 using Serilog.Extensions.Logging;
 using UnityBundleReader;
 using UnityBundleReader.Classes;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 using Logger = Serilog.Core.Logger;
 
 #if DEBUG
@@ -35,10 +36,21 @@ JsonSerializerOptions jsonSerializerOptions = new()
 
 try
 {
-    ParserResult<object> parserResult = Parser.Default.ParseArguments<ExtractWorldGraphArgs, VersionArgs>(args);
+    Parser parser = new(
+        with =>
+        {
+            with.HelpWriter = Console.Error;
+            with.CaseInsensitiveEnumValues = true;
+        }
+    );
+    ParserResult<object> parserResult = parser.ParseArguments<ExtractWorldGraphArgs, ExtractMapsArgs>(args);
 
     await parserResult.WithParsedAsync<ExtractWorldGraphArgs>(
-        args => ExtractDataFromBundle(Path.Join(args.Output, "world-graph.json"), args.BundleDirectory, "worldassets", new WorldGraphBundleExtractor())
+        args => ExtractDataFromBundles("world-graph", args.BundleDirectory, "worldassets", new WorldGraphBundleExtractor(), args)
+    );
+
+    await parserResult.WithParsedAsync<ExtractMapsArgs>(
+        args => ExtractDataFromBundles("maps", args.BundleDirectory, "mapdata", new MapsBundleExtractor(loggerFactory.CreateLogger<MapsBundleExtractor>()), args)
     );
 }
 catch (Exception exn)
@@ -52,9 +64,10 @@ finally
 
 return;
 
-async Task ExtractDataFromBundle<TData>(string output, string bundleFileDirectory, string bundleFilePrefix, IBundleExtractor<TData> extractor)
+async Task ExtractDataFromBundles<TData>(string outputFileName, string bundleFileDirectory, string bundleFilePrefix, IBundleExtractor<TData> extractor, ExtractArgsBase args)
 {
-    string dataTypeName = typeof(TData).Name;
+    string output = GetOutputFileName(outputFileName, args);
+    string dataTypeName = typeof(TData).ToString();
 
     globalLogger.LogInformation("Extracting data of type {Name}...", dataTypeName);
 
@@ -64,18 +77,30 @@ async Task ExtractDataFromBundle<TData>(string output, string bundleFileDirector
         return;
     }
 
-    string? file = Directory.EnumerateFiles(bundleFileDirectory).FirstOrDefault(p => Path.GetFileName(p).StartsWith(bundleFilePrefix));
-    if (file == null)
+    string[] files = Directory.EnumerateFiles(bundleFileDirectory).Where(p => Path.GetFileName(p).StartsWith(bundleFilePrefix)).ToArray();
+    switch (files.Length)
     {
-        globalLogger.LogError("Could not find bundle {Name} in directory {Directory}.", bundleFilePrefix, bundleFileDirectory);
-        return;
+        case 0:
+            globalLogger.LogError("Could not find bundle {Name} in directory {Directory}.", bundleFilePrefix, bundleFileDirectory);
+            return;
+        case 1:
+            globalLogger.LogInformation("Found bundle file: {File}.", files.First());
+            break;
+        case > 1:
+            globalLogger.LogInformation(
+                "Found {Count} bundle files at {Directory}: {Files}.",
+                files.Length,
+                bundleFileDirectory,
+                string.Join(", ", files.Select(Path.GetFileName))
+            );
+            break;
     }
 
-    globalLogger.LogInformation("Found bundle file: {File}.", file);
-
-    AssetsManager assetsManager = new(NullLogger<AssetsManager>.Instance) { SpecifyUnityVersion = "2022.3.29f1" };
-    assetsManager.LoadFiles(file);
+    AssetsManager assetsManager = new(loggerFactory.CreateLogger<AssetsManager>()) { SpecifyUnityVersion = "2022.3.29f1" };
+    assetsManager.LoadFiles(files);
     MonoBehaviour[] behaviours = assetsManager.AssetsFileList.SelectMany(f => f.Objects).OfType<MonoBehaviour>().ToArray();
+
+    globalLogger.LogInformation("Found a total of {Count} behaviours to process.", behaviours.Length);
 
     TData? data = extractor.Extract(behaviours);
     if (data == null)
@@ -91,8 +116,13 @@ async Task ExtractDataFromBundle<TData>(string output, string bundleFileDirector
     globalLogger.LogInformation("Extracted data of type {Name} to {Output}.", dataTypeName, output);
 }
 
-[Verb("worldgraph")]
-class ExtractWorldGraphArgs
+string GetOutputFileName(string filename, ExtractArgsBase args)
+{
+    return Path.Join(args.Output, filename + ".json");
+}
+
+
+abstract class ExtractArgsBase
 {
     [Value(0, Required = false, Default = ".", HelpText = "Directory containing the worldassets_*.bundle file.")]
     public string BundleDirectory { get; set; } = ".";
@@ -101,7 +131,12 @@ class ExtractWorldGraphArgs
     public string Output { get; set; } = "./output";
 }
 
-[Verb("version")]
-class VersionArgs
+[Verb("worldgraph")]
+class ExtractWorldGraphArgs : ExtractArgsBase
+{
+}
+
+[Verb("maps")]
+class ExtractMapsArgs : ExtractArgsBase
 {
 }
