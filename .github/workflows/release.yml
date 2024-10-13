@@ -80,11 +80,12 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Build DDC.Extractor plugin
-        run: dotnet build DDC.Extractor/DDC.Extractor.csproj --configuration Release --no-restore
+      - name: Publish
+        run: dotnet publish DDC.Extractor/DDC.Extractor.csproj --configuration Release --no-restore
 
-      - name: Copy plugin
-        run: copy DDC.Extractor/bin/Release/net6.0/DDC*.dll ${{ steps.read_dofus_version.outputs.dofus_path }}/BepInEx/plugins
+      - name: Pack plugin
+        run: |
+          ./pack.ps1 -configuration Release -output ${{ steps.read_dofus_version.outputs.dofus_path }}/BepInEx/plugins/DDC
 
       - name: Create BepInEx config folder
         run: md ${{ steps.read_dofus_version.outputs.dofus_path }}/BepInEx/config -Force
@@ -126,7 +127,7 @@ jobs:
           cd ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data
           7z a data.zip .
 
-      - name: Upload compiled libraries to release
+      - name: Upload data to release
         if: ${{ github.event_name == 'release' }}
         uses: svenstaro/upload-release-action@v2
         with:
@@ -135,7 +136,7 @@ jobs:
           asset_name: data.zip
           tag: ${{ github.ref }}
 
-      - name: Upload compiled library to artifacts
+      - name: Upload data to artifacts
         if: ${{ github.event_name != 'release' }}
         uses: actions/upload-artifact@v4
         with:

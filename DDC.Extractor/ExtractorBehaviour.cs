@@ -1,24 +1,33 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using BepInEx.Unity.IL2CPP.Utils.Collections;
 using Core.DataCenter;
+using Core.DataCenter.Metadata.Effect;
 using Core.DataCenter.Metadata.Interactive;
+using Core.DataCenter.Metadata.Item;
 using Core.DataCenter.Metadata.Quest.TreasureHunt;
 using Core.DataCenter.Metadata.World;
 using Core.Localization;
 using DDC.Extractor.Converters;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
 using UnityEngine;
 
 namespace DDC.Extractor;
 
 public class ExtractorBehaviour : MonoBehaviour
 {
-    static readonly JsonSerializerOptions JsonSerializerOptions = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+    static readonly JsonSerializerSettings JsonSerializerSettings = new()
+    {
+        ContractResolver = new DefaultContractResolver { NamingStrategy = new KebabCaseNamingStrategy() },
+        Converters = [new StringEnumConverter(new KebabCaseNamingStrategy())],
+        NullValueHandling = NullValueHandling.Ignore
+    };
 
     void Start() => StartCoroutine(StartCoroutine().WrapToIl2Cpp());
 
@@ -36,6 +45,12 @@ public class ExtractorBehaviour : MonoBehaviour
         yield return WaitForCompletion(ExtractDataFromGame("sub-areas.json", DataCenterModule.GetDataRoot<SubAreasRoot>(), new SubAreasConverter()));
         yield return WaitForCompletion(ExtractDataFromGame("world-maps.json", DataCenterModule.GetDataRoot<WorldMapsRoot>(), new WorldMapsConverter()));
         yield return WaitForCompletion(ExtractDataFromGame("interactives.json", DataCenterModule.GetDataRoot<InteractivesRoot>(), new InteractivesConverter()));
+        yield return WaitForCompletion(ExtractDataFromGame("items.json", DataCenterModule.GetDataRoot<ItemsRoot>(), new ItemsConverter()));
+        yield return WaitForCompletion(ExtractDataFromGame("item-sets.json", DataCenterModule.GetDataRoot<ItemSetsRoot>(), new ItemSetsConverter()));
+        yield return WaitForCompletion(ExtractDataFromGame("item-types.json", DataCenterModule.GetDataRoot<ItemTypesRoot>(), new ItemTypesConverter()));
+        yield return WaitForCompletion(ExtractDataFromGame("item-super-types.json", DataCenterModule.GetDataRoot<ItemSuperTypesRoot>(), new ItemSuperTypesConverter()));
+        yield return WaitForCompletion(ExtractDataFromGame("evolutive-item-types.json", DataCenterModule.GetDataRoot<EvolutiveItemTypesRoot>(), new EvolutiveItemTypesConverter()));
+        yield return WaitForCompletion(ExtractDataFromGame("effects.json", DataCenterModule.GetDataRoot<EffectsRoot>(), new EffectsConverter()));
         yield return WaitForCompletion(ExtractLocale("de.i18n.json", "Dofus_Data/StreamingAssets/Content/I18n/de.bin"));
         yield return WaitForCompletion(ExtractLocale("en.i18n.json", "Dofus_Data/StreamingAssets/Content/I18n/en.bin"));
         yield return WaitForCompletion(ExtractLocale("es.i18n.json", "Dofus_Data/StreamingAssets/Content/I18n/es.bin"));
@@ -66,9 +81,8 @@ public class ExtractorBehaviour : MonoBehaviour
         Models.LocalizationTable localizationTable = new() { LanguageCode = table.m_header.languageCode, Entries = entries };
 
         string path = Path.Join(Extractor.OutputDirectory, filename);
-        await using FileStream stream = File.Open(path, FileMode.Create);
-        await JsonSerializer.SerializeAsync(stream, localizationTable, JsonSerializerOptions);
-        stream.Flush();
+        string serialized = JsonConvert.SerializeObject(localizationTable, JsonSerializerSettings);
+        await File.WriteAllTextAsync(path, serialized);
 
         Extractor.Logger.LogInfo($"Extracted locale {table.m_header.languageCode} to {path}.");
     }
@@ -80,12 +94,26 @@ public class ExtractorBehaviour : MonoBehaviour
 
         Extractor.Logger.LogInfo($"Extracting data of type {dataTypeName}...");
 
-        Il2CppSystem.Collections.Generic.List<TData> data = root.GetObjects();
-        TSerializedData[] arr = data._items.Take(data.Count).Select(converter.Convert).ToArray();
+        TSerializedData[] arr;
+        try
+        {
+            Il2CppSystem.Collections.Generic.List<TData> data = root.GetObjects();
+            arr = data._items.Take(data.Count).Select(converter.Convert).ToArray();
+        }
+        catch (Exception exn)
+        {
+            Extractor.Logger.LogError($"Error while converting data of type {dataTypeName}.{Environment.NewLine}{exn}");
+            return;
+        }
 
-        await using FileStream stream = File.Open(path, FileMode.Create);
-        await JsonSerializer.SerializeAsync(stream, arr, JsonSerializerOptions);
-        stream.Flush();
+        if (arr.Length == 0)
+        {
+            Extractor.Logger.LogError($"Did not find any data of type {dataTypeName}.");
+            return;
+        }
+
+        string serialized = JsonConvert.SerializeObject(arr, JsonSerializerSettings);
+        await File.WriteAllTextAsync(path, serialized);
 
         Extractor.Logger.LogInfo($"Extracted data of type {dataTypeName} to {path}.");
     }
@@ -104,6 +132,16 @@ public class ExtractorBehaviour : MonoBehaviour
         while (!task.IsCompleted)
         {
             yield return null;
+        }
+
+        if (task.IsFaulted)
+        {
+            throw new Exception("Task is faulted.", task.Exception);
+        }
+
+        if (task.IsCanceled)
+        {
+            throw new Exception("Task is canceled.", task.Exception);
         }
     }
 }
