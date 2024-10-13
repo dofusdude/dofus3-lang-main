@@ -71,6 +71,7 @@ public class ExtractorBehaviour : MonoBehaviour
         yield return WaitForCompletion(ExtractDataFromGame("evolutive-item-types.json", DataCenterModule.GetDataRoot<EvolutiveItemTypesRoot>(), new EvolutiveItemTypesConverter()));
         yield return WaitForCompletion(ExtractDataFromGame("effects.json", DataCenterModule.GetDataRoot<EffectsRoot>(), new EffectsConverter()));
         yield return WaitForCompletion(ExtractDataFromGame("recipes.json", DataCenterModule.GetDataRoot<RecipesRoot>(), new RecipesConverter()));
+        yield return WaitForCompletion(ExtractDataFromGame("jobs.json", DataCenterModule.GetDataRoot<JobsRoot>(), new JobsConverter()));
         yield return WaitForCompletion(ExtractLocale("de.i18n.json", "Dofus_Data/StreamingAssets/Content/I18n/de.bin"));
         yield return WaitForCompletion(ExtractLocale("en.i18n.json", "Dofus_Data/StreamingAssets/Content/I18n/en.bin"));
         yield return WaitForCompletion(ExtractLocale("es.i18n.json", "Dofus_Data/StreamingAssets/Content/I18n/es.bin"));
@@ -98,7 +99,7 @@ public class ExtractorBehaviour : MonoBehaviour
             entries[entry.Key] = output;
         }
 
-        Models.LocalizationTable localizationTable = new() { LanguageCode = table.m_header.languageCode, Entries = entries };
+        Models.I18N.LocalizationTable localizationTable = new() { LanguageCode = table.m_header.languageCode, Entries = entries };
 
         string path = Path.Join(Extractor.OutputDirectory, filename);
         string serialized = JsonConvert.SerializeObject(localizationTable, JsonSerializerSettings);
