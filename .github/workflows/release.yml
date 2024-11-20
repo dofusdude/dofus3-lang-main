@@ -76,8 +76,8 @@ jobs:
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
-          title: "${{ github.event.inputs.version }}"
-          automatic_release_tag: "${{ github.event.inputs.version }}"
+          title: "${{ steps.read_dofus_version.outputs.dofus_version }}"
+          automatic_release_tag: "${{ steps.read_dofus_version.outputs.dofus_version }}"
           files: Interop/*
 
 permissions:
