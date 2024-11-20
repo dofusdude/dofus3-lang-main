@@ -1,12 +1,6 @@
-# This workflow will build a .NET project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
-
 name: Extract data and release
 
 on:
-  release:
-    types: [published]
-  workflow_call:
   workflow_dispatch:
 
 jobs:  
@@ -77,72 +71,14 @@ jobs:
       - name: Copy Interop assemblies
         run: copy ${{ steps.read_dofus_version.outputs.dofus_path }}/BepInEx/interop/* Interop/
 
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Publish
-        run: dotnet publish DDC.Extractor/DDC.Extractor.csproj --configuration Release --no-restore
-
-      - name: Pack plugin
-        run: |
-          ./pack.ps1 -configuration Release -output ${{ steps.read_dofus_version.outputs.dofus_path }}/BepInEx/plugins/DDC
-
-      - name: Create BepInEx config folder
-        run: md ${{ steps.read_dofus_version.outputs.dofus_path }}/BepInEx/config -Force
-
-      - name: Write DDC.Extractor configuration
-        run: |
-          $Configuration = @'
-          [General]
-          OutputDirectory = ./extracted-data
-          '@
-          echo "$Configuration" > ${{ steps.read_dofus_version.outputs.dofus_path }}/BepInEx/config/DDC.Extractor.cfg
-
-      - name: Run DDC.Extractor
-        run: cd ${{ steps.read_dofus_version.outputs.dofus_path }}; node ../scripts/bepinex-run-until "Dofus.exe" "DDC data extraction complete."
-
-      - name: Build DofusBundleReader
-        run: dotnet build DofusBundleReader/DofusBundleReader.csproj --configuration Release --no-restore
-            
-      - name: Run DofusBundleReader worldgraph
-        run: cd ${{ steps.read_dofus_version.outputs.dofus_path }}; &"../DofusBundleReader/bin/Release/net8.0/DofusBundleReader.exe" worldgraph "Dofus_Data/StreamingAssets/aa/StandaloneWindows64" -o ./extracted-data
-        
-      - name: Run DofusBundleReader maps
-        run: cd ${{ steps.read_dofus_version.outputs.dofus_path }}; &"../DofusBundleReader/bin/Release/net8.0/DofusBundleReader.exe" maps "Dofus_Data/StreamingAssets/Content/Map" -o ./extracted-data
-
-      - name: Create metadata file
-        run: |
-          $Metadata = @{
-            BepInExVersion = "6.0.0-be.697+5362580" 
-            GameBuildId = "${{ steps.read_dofus_build_id.outputs.dofus_build_id }}"
-            GameVersion = "${{ steps.read_dofus_version.outputs.dofus_version }}"
-          }
-          $MetadataJson = $Metadata | ConvertTo-Json
-          $null = Write-Host $MetadataJson
-          $null = $MetadataJson | Out-File -FilePath "${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/metadata.json"
-
-      - name: Create release archive
-        if: ${{ github.event_name == 'release' }}
-        run: |
-          cd ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data
-          7z a data.zip .
-
-      - name: Upload data to release
-        if: ${{ github.event_name == 'release' }}
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload assets
+        uses: "marvinpinto/action-automatic-releases@latest"
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/data.zip
-          asset_name: data.zip
-          tag: ${{ github.ref }}
-
-      - name: Upload data to artifacts
-        if: ${{ github.event_name != 'release' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: data
-          path: ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data
-          if-no-files-found: 'error'
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          title: "${{ github.event.inputs.version }}"
+          automatic_release_tag: "${{ github.event.inputs.version }}"
+          files: Interop/*
 
 permissions:
   contents: write
