@@ -23,24 +23,23 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           install: >-
-            tar
             curl
-            gzip
             wget
       
       - name: Install doduda
         shell: msys2 {0}
         run: |
           curl -s https://api.github.com/repos/dofusdude/doduda/releases/latest | grep "browser_download_url.*Windows_x86_64.zip" | cut -d : -f 2,3 | tr -d \" | wget -qi -
-          7z x "doduda_${os}_x86_64.zip" -o "doduda_Windows_x86_64" -aoa
-          cp "doduda_Windows_x86_64/doduda.exe" doduda.exe
-          rm "doduda_${os}_x86_64.tar.gz"
-          chmod +x doduda.exe
+
+      - name: Extract doduda
+        run: |
+          7z x doduda_Windows_x86_64.zip -aoa
+          copy doduda_Windows_x86_64/doduda.exe doduda.exe
 
       - name: Read current game version
         id: read_dofus_version
         run: |
-          $GameVersion=$(.\doduda version --headless --release beta)
+          $GameVersion=$(doduda.exe version --headless --platform windows --release beta)
           echo "dofus_version=$GameVersion" >> $Env:GITHUB_OUTPUT
           echo "dofus_path=data" >> $Env:GITHUB_OUTPUT
 
@@ -53,7 +52,7 @@ jobs:
 
       - name: Download latest game files
         if: ${{ steps.restore_game_files.outputs.cache-hit != 'true' }}
-        run: .\doduda --headless --full --release beta ${{ steps.read_dofus_version.outputs.dofus_path }} # Use beta for now
+        run: doduda.exe --headless --full --release beta ${{ steps.read_dofus_version.outputs.dofus_path }} # Use beta for now
 
       - name: Download BepInEx
         run: curl https://builds.bepinex.dev/projects/bepinex_be/697/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.697%2B5362580.zip -o BepInEx.zip
