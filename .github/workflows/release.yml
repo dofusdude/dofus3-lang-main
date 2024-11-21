@@ -51,7 +51,7 @@ jobs:
 
       - name: Download latest game files
         if: ${{ steps.restore_game_files.outputs.cache-hit != 'true' }}
-        run: .\doduda.exe --headless --full --release beta ${{ steps.read_dofus_version.outputs.dofus_path }} # Use beta for now
+        run: .\doduda.exe --headless --full --release beta # Use beta for now
 
       - name: Download BepInEx
         run: curl https://builds.bepinex.dev/projects/bepinex_be/697/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.697%2B5362580.zip -o BepInEx.zip
