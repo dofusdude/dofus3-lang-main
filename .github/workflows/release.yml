@@ -34,7 +34,6 @@ jobs:
       - name: Extract doduda
         run: |
           7z x doduda_Windows_x86_64.zip -aoa
-          copy doduda_Windows_x86_64/doduda.exe doduda.exe
 
       - name: Read current game version
         id: read_dofus_version
