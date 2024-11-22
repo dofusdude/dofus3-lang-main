@@ -114,7 +114,7 @@ jobs:
           prerelease: false
           title: "${{ steps.read_dofus_version.outputs.dofus_version }}"
           automatic_release_tag: "${{ steps.read_dofus_version.outputs.dofus_version }}"
-          files: ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/en.i18n.json ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/fr.i18n.json ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/es.i18n.json ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/de.i18n.json ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/pt.i18n.json
+          files: ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/*.i18n.json
 
 permissions:
   contents: write
