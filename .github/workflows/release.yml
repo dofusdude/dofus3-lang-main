@@ -1,6 +1,12 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
 name: Extract data and release
 
 on:
+  release:
+    types: [published]
+  workflow_call:
   workflow_dispatch:
 
 jobs:  
@@ -24,6 +30,9 @@ jobs:
           echo @dofus-batteries-included:registry=https://npm.pkg.github.com > ~/.npmrc
           echo //npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }} >> ~/.npmrc
 
+      - name: Install Cytrus v6
+        run: npm i @dofus-batteries-included/cytrus-v6 -g
+
       - name: Set up Git Bash
         uses: msys2/setup-msys2@v2
         with:
@@ -45,7 +54,7 @@ jobs:
         run: |
           $GameVersion=$(.\doduda.exe version --headless --platform windows --release beta)
           echo "dofus_version=$GameVersion" >> $Env:GITHUB_OUTPUT
-          echo "dofus_path=data/$GameVersion" >> $Env:GITHUB_OUTPUT
+          echo "dofus_path=dofus-beta-$GameVersion" >> $Env:GITHUB_OUTPUT
 
       - name: Restore game files
         id: restore_game_files
@@ -133,14 +142,22 @@ jobs:
           cd ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data
           7z a data.zip .
 
-      - name: Upload assets
-        uses: "marvinpinto/action-automatic-releases@latest"
+      - name: Upload data to release
+        if: ${{ github.event_name == 'release' }}
+        uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: false
-          title: "${{ steps.read_dofus_version.outputs.dofus_version }}"
-          automatic_release_tag: "${{ steps.read_dofus_version.outputs.dofus_version }}"
-          files: ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/en.i18n.json ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/fr.i18n.json ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/es.i18n.json ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/de.i18n.json ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/pt.i18n.json
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/data.zip
+          asset_name: data.zip
+          tag: ${{ github.ref }}
+
+      - name: Upload data to artifacts
+        if: ${{ github.event_name != 'release' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: data
+          path: ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data
+          if-no-files-found: 'error'
 
 permissions:
   contents: write
