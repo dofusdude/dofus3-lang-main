@@ -116,6 +116,11 @@ jobs:
           automatic_release_tag: "${{ steps.read_dofus_version.outputs.dofus_version }}"
           files: ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/*.i18n.json
 
+      - name: Notify Data repository
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}
+        run: gh workflow run release --repo dofusdude/dofus3-beta -f version=${{ steps.read_dofus_version.outputs.dofus_version }}
+
 permissions:
   contents: write
   packages: read
