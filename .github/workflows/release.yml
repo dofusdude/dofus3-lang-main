@@ -116,10 +116,10 @@ jobs:
           automatic_release_tag: "${{ steps.read_dofus_version.outputs.dofus_version }}"
           files: ${{ steps.read_dofus_version.outputs.dofus_path }}/extracted-data/*.i18n.json
 
-      - name: Notify Data repository
+      - name: Notify Doduda persistence
         env:
           GH_TOKEN: ${{ secrets.PAT }}
-        run: gh workflow run release --repo dofusdude/dofus3-beta -f version=${{ steps.read_dofus_version.outputs.dofus_version }}
+        run: gh workflow run update_persistence --repo dofusdude/doduda -f version=${{ steps.read_dofus_version.outputs.dofus_version }} -f release=beta
 
 permissions:
   contents: write
