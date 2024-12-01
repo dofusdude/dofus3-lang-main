@@ -1,6 +1,6 @@
-# dofus3-lang-beta
+# dofus3-lang-main
 
-A fork of the [DDC](https://github.com/Dofus-Batteries-Included/DDC) project to unpack the translations of the Dofus 3 beta client.
+A fork of the [DDC](https://github.com/Dofus-Batteries-Included/DDC) project to unpack the translations of the Dofus 3 client.
 
 Main changes are:
 - using `doduda` instead of `cytrus-v6` to download the game much faster
