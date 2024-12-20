@@ -119,7 +119,7 @@ jobs:
       - name: Notify Doduda persistence
         env:
           GH_TOKEN: ${{ secrets.PAT }}
-        run: gh workflow run 65387138 --repo dofusdude/doduda -f version=${{ steps.read_dofus_version.outputs.dofus_version }} -f release=main
+        run: gh workflow run 65387138 --repo dofusdude/doduda -f version=${{ steps.read_dofus_version.outputs.dofus_version }} -f release=dofus3
 
 permissions:
   contents: write
